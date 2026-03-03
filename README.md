@@ -1,72 +1,173 @@
-# Midnight Template Repository
+# Hello World Example
 
-This GitHub repository should be used as a template when creating a new Midnight GitHub repository.
-The template is configured with default repository settings and a set of default files that are expected to exist in all Midnight GitHub repositories.
+The repository is intended as part of the tutorial flow for the hello-world example in the [Midnight documentation](https://docs.midnight.network/getting-started/hello-world). It does not operate as a complete repository without the accompanying documentation.
 
-### LICENSE
+The below documentation will be provided here to "finish" this example.
 
-Apache 2.0.
+## Set up project
 
-### README.md
+```bash
+git clone https://github.com/nstanford5/compact-hello-world.git
+```
 
-Provides a brief description for users and developers who want to understand the purpose, setup, and usage of the repository.
+Install dependencies:
 
-### SECURITY.md
+```bash
+npm install
+```
 
-Provides a brief description of the Midnight Foundation's security policy and how to properly disclose security issues.
+Create the required directories:
 
-### CONTRIBUTING.md
+```bash
+mkdir contracts
+```
 
-Provides guidelines for how people can contribute to the Midnight project.
+The `contracts` folder will contain your Compact smart contract source files.
 
-### CODEOWNERS
+## Create the contract file
 
-Defines repository ownership rules.
+Create a new file named `hello-world.compact` in the `contracts` directory:
 
-### ISSUE_TEMPLATE
+```bash
+touch contracts/hello-world.compact
+```
 
-Provides templates for reporting various types of issues, such as: bug report, documentation improvement and feature request.
+Open this file in VS Code:
+```bash
+code .
+```
 
-### PULL_REQUEST_TEMPLATE
+## Create the Compact Smart Contract
 
-Provides a template for a pull request.
+```compact
+pragma language_version 0.21;
 
-### CLA Assistant
+export ledger message: Opaque<"string">;
 
-The Midnight Foundation appreciates contributions, and like many other open source projects asks contributors to sign a contributor
-License Agreement before accepting contributions. We use CLA assistant (https://github.com/cla-assistant/cla-assistant) to streamline the CLA
-signing process, enabling contributors to sign our CLAs directly within a GitHub pull request.
+export circuit storeMessage(newMessage: Opaque<"string">): [] {
+  message = disclose(newMessage);
+}
+```
+- `pragma language_version` specifies which version of Compact your contract uses.
+- `ledger message` creates a state variable named `message` that stores a string value in the on-chain state. On-chain state is public and persistent on the blockchain.
+- `circuit storeMessage` is a Compact circuit (function) that defines the logic to modify on-chain state.
+- `newMessage: Opaque<"string">` is the input parameter. *Circuit parameters are always private by default.* The `disclose()` function marks the private value as safe to store publicly. Without it, trying to assign `newMessage` directly to the ledger returns a compiler error.
 
-### Dependabot
+## Compile the contract
 
-The Midnight Foundation uses GitHub Dependabot feature to keep our projects dependencies up-to-date and address potential security vulnerabilities.
+Compiling transforms your Compact code into zero-knowledge circuits, generates cryptographic keys, 
+and creates TypeScript APIs and a JavaScript implementation for the contract to be used by DApps. 
 
-### Checkmarx
+Run the compiler from your project root:
 
-The Midnight Foundation uses Checkmarx for application security (AppSec) to identify and fix security vulnerabilities.
-All repositories are scanned with Checkmarx's suite of tools including: Static Application Security Testing (SAST), Infrastructure as Code (IaC), Software Composition Analysis (SCA), API Security, Container Security and Supply Chain Scans (SCS).
+```bash
+npm run compile
+```
 
-### Unito
+You should see the following output:
 
-Facilitates two-way data synchronization, automated workflows and streamline processes between: Jira, GitHub issues and Github project Kanban board.
+```
+Compiling 1 circuits:
+  circuit "storeMessage" (k=6, rows=26)
+```
 
-# TODO - New Repo Owner
+The compilation process will:
+1. Parse and validate your Compact code.
+2. Generate zero-knowledge circuits from your logic.
+3. Create proving and verifying keys for the circuits.
+4. Generate the TypeScript API and JavaScript implementation for the contract.
 
-### Software Package Data Exchange (SPDX)
-Include the following Software Package Data Exchange (SPDX) short-form identifier in a comment at the top headers of each source code file.
+When compilation completes, you'll see a new directory structure:
 
+```
+contracts/
+├── managed/
+|   └── hello-world/
+|        ├── compiler/
+|        ├── contract/
+|        ├── keys/
+|        └── zkir/
+└── hello-world.compact
+```
 
- <I>// This file is part of <B>REPLACE WITH REPO-NAME</B>.<BR>
- // Copyright (C) 2025-2026 Midnight Foundation<BR>
- // SPDX-License-Identifier: Apache-2.0<BR>
- // Licensed under the Apache License, Version 2.0 (the "License");<BR>
- // You may not use this file except in compliance with the License.<BR>
- // You may obtain a copy of the License at<BR>
- //<BR>
- //	https://www.apache.org/licenses/LICENSE-2.0<BR>
- //<BR>
- // Unless required by applicable law or agreed to in writing, software<BR>
- // distributed under the License is distributed on an "AS IS" BASIS,<BR>
- // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<BR>
- // See the License for the specific language governing permissions and<BR>
- // limitations under the License.</I>
+Here's what each directory contains:
+
+- **contract/**: The compiled contract artifacts, which includes the JavaScript implementation and type definitions.
+- **keys/**: Cryptographic proving and verifying keys that enable zero-knowledge proofs.
+- **zkir/**: Zero-Knowledge Intermediate Representation—the bridge between Compact and the ZK backend.
+- **compiler/**: Compiler-generated JSON output that other tools can use to understand the contract structure.
+
+## Deploy Contract to Preprod
+Now that your contract is compiled, it needs to be deployed to the blockchain so that you can interact with it.
+
+Be sure the Docker engine is running and in a *separate terminal* start the proof server from the project root:
+```bash
+npm run start-proof-server
+```
+
+Leave the proof server running for the following steps.
+
+To deploy the contract, you'll need a wallet. The deploy script will help you create a new wallet. 
+
+:::note
+Be sure to save the seed phrase as you'll need it in the following steps.
+:::
+
+Run the deployment script:
+```bash
+npm run deploy
+```
+
+### Deployment Failed!
+
+You should have noticed a failure in deploying your contract:
+```
+(FiberFailure) Wallet.Transacting: Not enough Dust generated to pay the fee
+```
+
+This is because the Midnight network requires DUST to pay for your transactions. DUST is generated by the NIGHT you received from the faucet, but it takes time to generate. The more NIGHT you have, the faster DUST generates. Enough tricks, let's deploy and interact with your Compact contract.
+
+Run the deployment script again, this time choosing option 2 'Restore from seed'. Be sure to paste the seed from your previously created wallet:
+```bash
+npm run deploy
+``` 
+
+When deployment completes, you'll see output similar to the following:
+```shell
+✅ Contract deployed successfully!
+
+Contract Address: 0x1234567890abcdef...
+
+Saved to deployment.json
+```
+
+## Contract interaction
+
+Now that the contract has been successfully deployed, let's interact with it:
+```bash
+npm run cli
+```
+
+Enter your wallet seed when prompted and wait to connect to the Preprod network.
+
+Choose option [2] to verify the current message is an "(empty)" string:
+```
+  [1] Store a message
+  [2] Read current message
+  [3] Exit
+```
+
+Then choose option 1 and enter "Hello World!" when prompted. You should then see a successful storage of your message:
+```
+ ✅ Message stored!
+  Transaction: 0007f15ce66f14b01ff7d5c2b4fbf4a40f65630cd7950785a81832b11103c5a0f1
+  Block: 402893
+```
+
+Now choose option [2] again, this time returning your "Hello World!" message:
+```
+  Reading message from blockchain...
+  Current message: "Hello World!"
+```
+
+Hello World! You are now ready to explore [Tutorials](https://docs.midnight.network/category/tutorials) for more detailed instructions on building DApps on Midnight!

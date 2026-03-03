@@ -1,3 +1,18 @@
+ <I>// This file is part of <B>example-hello-world</B>.<BR>
+ // Copyright (C) 2025-2026 Midnight Foundation<BR>
+ // SPDX-License-Identifier: Apache-2.0<BR>
+ // Licensed under the Apache License, Version 2.0 (the "License");<BR>
+ // You may not use this file except in compliance with the License.<BR>
+ // You may obtain a copy of the License at<BR>
+ //<BR>
+ //	https://www.apache.org/licenses/LICENSE-2.0<BR>
+ //<BR>
+ // Unless required by applicable law or agreed to in writing, software<BR>
+ // distributed under the License is distributed on an "AS IS" BASIS,<BR>
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.<BR>
+ // See the License for the specific language governing permissions and<BR>
+ // limitations under the License.</I>
+
 import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { WebSocket } from 'ws';
