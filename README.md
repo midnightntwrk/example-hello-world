@@ -7,7 +7,7 @@ The below documentation will be provided here to "finish" this example.
 ## Set up project
 
 ```bash
-git clone https://github.com/nstanford5/compact-hello-world.git
+git clone git@github.com:midnightntwrk/example-hello-world.git
 ```
 
 Install dependencies:
@@ -40,7 +40,7 @@ code .
 ## Create the Compact Smart Contract
 
 ```compact
-pragma language_version 0.21;
+pragma language_version 0.22;
 
 export ledger message: Opaque<"string">;
 
