@@ -1,14 +1,39 @@
 # Hello World Example
 
-The repository is intended as part of the tutorial flow for the hello-world example in the [Midnight documentation](https://docs.midnight.network/getting-started/hello-world). It does not operate as a complete repository without the accompanying documentation.
+This repository tracks the official Midnight `hello-world` flow, updated for the Midnight 2026 compatibility matrix.
 
-The below documentation will be provided here to "finish" this example.
+Source of truth for supported versions:
 
-## Set up project
+- Compatibility matrix: https://docs.midnight.network/relnotes/support-matrix
+- Official tutorial flow: https://docs.midnight.network/getting-started/hello-world
 
-```bash
-git clone git@github.com:midnightntwrk/example-hello-world.git
-```
+This repo intentionally uses the compatibility matrix as the baseline when it differs from older getting-started pages.
+
+## Supported baseline
+
+- Node.js `v22+`
+- `compact` `0.5.0`
+- `compact compile` / `compactc` `0.30.0`
+- Midnight.js `4.0.2`
+- Wallet SDK Facade `3.0.0`
+- Ledger / Proof Server `8.0.3`
+
+## Important note about the proof server
+
+As of March 24, 2026, the compatibility matrix lists Proof Server `8.0.3` as the latest tested version.
+
+Some older Midnight docs pages still show `midnightntwrk/proof-server:7.0.0`. This repository follows the compatibility matrix and uses `8.0.3`.
+
+## Project layout
+
+- `contracts/hello-world.compact`: source contract committed to the repo
+- `contracts/managed/hello-world/`: generated build output from `compact compile`
+- `src/deploy.ts`: deploy script for Preprod
+- `src/cli.ts`: interactive CLI for reading and writing the contract state
+
+Generated artifacts under `contracts/managed/` are not committed.
+
+## Setup
 
 Install dependencies:
 
@@ -16,158 +41,160 @@ Install dependencies:
 npm install
 ```
 
-Create the required directories:
+Verify the local toolchain:
 
 ```bash
-mkdir contracts
+node -v
+compact --version
+compact compile --version
 ```
-
-The `contracts` folder will contain your Compact smart contract source files.
-
-## Create the contract file
-
-Create a new file named `hello-world.compact` in the `contracts` directory:
-
-```bash
-touch contracts/hello-world.compact
-```
-
-Open this file in VS Code:
-```bash
-code .
-```
-
-## Create the Compact Smart Contract
-
-```compact
-pragma language_version 0.22;
-
-export ledger message: Opaque<"string">;
-
-export circuit storeMessage(newMessage: Opaque<"string">): [] {
-  message = disclose(newMessage);
-}
-```
-- `pragma language_version` specifies which version of Compact your contract uses.
-- `ledger message` creates a state variable named `message` that stores a string value in the on-chain state. On-chain state is public and persistent on the blockchain.
-- `circuit storeMessage` is a Compact circuit (function) that defines the logic to modify on-chain state.
-- `newMessage: Opaque<"string">` is the input parameter. *Circuit parameters are always private by default.* The `disclose()` function marks the private value as safe to store publicly. Without it, trying to assign `newMessage` directly to the ledger returns a compiler error.
 
 ## Compile the contract
 
-Compiling transforms your Compact code into zero-knowledge circuits, generates cryptographic keys, 
-and creates TypeScript APIs and a JavaScript implementation for the contract to be used by DApps. 
-
-Run the compiler from your project root:
+Compile the Compact contract first:
 
 ```bash
 npm run compile
 ```
 
-You should see the following output:
+This generates:
 
-```
-Compiling 1 circuits:
-  circuit "storeMessage" (k=6, rows=26)
-```
-
-The compilation process will:
-1. Parse and validate your Compact code.
-2. Generate zero-knowledge circuits from your logic.
-3. Create proving and verifying keys for the circuits.
-4. Generate the TypeScript API and JavaScript implementation for the contract.
-
-When compilation completes, you'll see a new directory structure:
-
-```
-contracts/
-├── managed/
-|   └── hello-world/
-|        ├── compiler/
-|        ├── contract/
-|        ├── keys/
-|        └── zkir/
-└── hello-world.compact
+```text
+contracts/managed/hello-world/
+├── compiler/
+├── contract/
+├── keys/
+└── zkir/
 ```
 
-Here's what each directory contains:
+The TypeScript app expects these generated artifacts to exist. If they are missing, `build`, `deploy`, and `cli` will fail with an explicit message telling you to run `npm run compile`.
 
-- **contract/**: The compiled contract artifacts, which includes the JavaScript implementation and type definitions.
-- **keys/**: Cryptographic proving and verifying keys that enable zero-knowledge proofs.
-- **zkir/**: Zero-Knowledge Intermediate Representation—the bridge between Compact and the ZK backend.
-- **compiler/**: Compiler-generated JSON output that other tools can use to understand the contract structure.
+## Build the TypeScript app
 
-## Deploy Contract to Preprod
-Now that your contract is compiled, it needs to be deployed to the blockchain so that you can interact with it.
+```bash
+npm run build
+```
 
-Be sure the Docker engine is running and in a *separate terminal* start the proof server from the project root:
+## Start the proof server
+
+Run the local proof server in a separate terminal:
+
 ```bash
 npm run start-proof-server
 ```
 
-Leave the proof server running for the following steps.
+This uses:
 
-To deploy the contract, you'll need a wallet. The deploy script will help you create a new wallet. 
-
-:::note
-Be sure to save the seed phrase as you'll need it in the following steps.
-:::
-
-Run the deployment script:
 ```bash
+docker run -p 6300:6300 midnightntwrk/proof-server:8.0.3 -- midnight-proof-server -v
+```
+
+Leave it running while deploying and interacting with the contract.
+
+## Deploy to Preprod
+
+Run:
+
+```bash
+export PRIVATE_STATE_PASSWORD='Str0ng!MidnightLocal'
 npm run deploy
 ```
 
-### Deployment Failed!
+The script will:
 
-You should have noticed a failure in deploying your contract:
-```
-(FiberFailure) Wallet.Transacting: Not enough Dust generated to pay the fee
-```
+1. Create a new wallet or restore one from seed.
+2. Wait for tNIGHT funding if needed.
+3. Register available NIGHT UTxOs for DUST generation if needed.
+4. Wait for DUST to become usable.
+5. Deploy the contract to Midnight Preprod.
+6. Save deployment metadata to `deployment.json`.
 
-This is because the Midnight network requires DUST to pay for your transactions. DUST is generated by the NIGHT you received from the faucet, but it takes time to generate. The more NIGHT you have, the faster DUST generates. Enough tricks, let's deploy and interact with your Compact contract.
+If the wallet is unfunded, the script prints the faucet-ready address and waits for funds.
 
-Run the deployment script again, this time choosing option 2 'Restore from seed'. Be sure to paste the seed from your previously created wallet:
+## Interact with the contract
+
+After deployment:
+
 ```bash
-npm run deploy
-``` 
-
-When deployment completes, you'll see output similar to the following:
-```shell
-✅ Contract deployed successfully!
-
-Contract Address: 0x1234567890abcdef...
-
-Saved to deployment.json
-```
-
-## Contract interaction
-
-Now that the contract has been successfully deployed, let's interact with it:
-```bash
+export PRIVATE_STATE_PASSWORD='Str0ng!MidnightLocal'
 npm run cli
 ```
 
-Enter your wallet seed when prompted and wait to connect to the Preprod network.
+The CLI can:
 
-Choose option [2] to verify the current message is an "(empty)" string:
-```
-  [1] Store a message
-  [2] Read current message
-  [3] Exit
-```
+- Store a message on-chain
+- Read the current public ledger message
 
-Then choose option 1 and enter "Hello World!" when prompted. You should then see a successful storage of your message:
-```
- ✅ Message stored!
-  Transaction: 0007f15ce66f14b01ff7d5c2b4fbf4a40f65630cd7950785a81832b11103c5a0f1
-  Block: 402893
-```
+## Typical flow
 
-Now choose option [2] again, this time returning your "Hello World!" message:
-```
-  Reading message from blockchain...
-  Current message: "Hello World!"
+```bash
+npm install
+npm run compile
+npm run build
+npm run start-proof-server
+export PRIVATE_STATE_PASSWORD='Str0ng!MidnightLocal'
+npm run deploy
+npm run cli
 ```
 
-Hello World! You are now ready to explore [Tutorials](https://docs.midnight.network/category/tutorials) for more detailed instructions on building DApps on Midnight!
+## Why this repo asks for `PRIVATE_STATE_PASSWORD`
+
+The official Midnight `hello-world` docs describe the contract and deployment flow at a high level, but they do not go into the configuration details of the local private state provider used by this repository.
+
+This repo uses the official encrypted LevelDB provider:
+
+- `@midnight-ntwrk/midnight-js-level-private-state-provider`
+
+That provider stores local contract private state and signing keys, and it requires:
+
+- `privateStoragePasswordProvider`
+- a strong password
+- an `accountId`
+
+This is why this repo asks for `PRIVATE_STATE_PASSWORD` even though the high-level tutorial does not mention it.
+
+Important:
+
+- your wallet seed and `PRIVATE_STATE_PASSWORD` are different secrets
+- the seed is for wallet key derivation
+- `PRIVATE_STATE_PASSWORD` is only for encrypting local provider storage
+- reuse the same `PRIVATE_STATE_PASSWORD` in future `deploy` and `cli` runs if you want to reopen the same local encrypted storage
+
+You can also pass it inline per command:
+
+```bash
+PRIVATE_STATE_PASSWORD='Str0ng!MidnightLocal' npm run deploy
+PRIVATE_STATE_PASSWORD='Str0ng!MidnightLocal' npm run cli
+```
+
+## Troubleshooting
+
+Missing compiled artifacts:
+
+```text
+Missing compiled contract artifacts. Run `npm run compile` before `npm run build`, `npm run deploy`, or `npm run cli`.
+```
+
+Proof server not running:
+
+- Make sure Docker Desktop is running.
+- Make sure port `6300` is available.
+- If you change the port, update `CONFIG.proofServer` in [src/utils.ts](/Users/jmaciaal/Projects/example-hello-world/src/utils.ts).
+
+Build issues:
+
+- Confirm you are on Node `v22+`
+- Confirm `compact --version` is `0.5.0`
+- Confirm `compact compile --version` is `0.30.0`
+
+Missing local encryption password:
+
+```text
+Missing PRIVATE_STATE_PASSWORD. This repo uses the official encrypted Level private state provider...
+```
+
+Set a strong password before running `deploy` or `cli`:
+
+```bash
+export PRIVATE_STATE_PASSWORD='Str0ng!MidnightLocal'
+```

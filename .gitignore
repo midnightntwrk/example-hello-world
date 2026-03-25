@@ -1,4 +1,5 @@
 /node_modules
-/contracts
+/contracts/managed
+/dist
 deployment.json
 /midnight-level-db
