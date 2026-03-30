@@ -1,36 +1,49 @@
 {
-  "name": "hello-world",
-  "version": "1.0.0",
+  "name": "hello-world-local",
+  "version": "0.1.0",
+  "private": true,
   "type": "module",
-  "scripts": {
-    "compile": "compact compile contracts/hello-world.compact contracts/managed/hello-world",
-    "build": "tsc",
-    "deploy": "tsx src/deploy.ts",
-    "start-proof-server": "docker run -p 6300:6300 midnightntwrk/proof-server:7.0.0 -- midnight-proof-server -v",
-    "cli": "tsx src/cli.ts"
+  "engines": {
+    "node": ">=22.0.0"
   },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/ws": "^8.18.1",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+  "scripts": {
+    "test": "NODE_OPTIONS='--experimental-vm-modules' vitest run",
+    "test:local": "MIDNIGHT_NETWORK=local yarn test",
+    "env:up": "docker compose up -d --wait",
+    "env:down": "docker compose down",
+    "validate": "yarn env:up && yarn test:local; yarn env:down"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.15.0",
-    "@midnight-ntwrk/ledger": "^4.0.0",
-    "@midnight-ntwrk/midnight-js-contracts": "3.1.0",
-    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "3.1.0",
-    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "3.1.0",
-    "@midnight-ntwrk/midnight-js-level-private-state-provider": "3.1.0",
-    "@midnight-ntwrk/midnight-js-network-id": "3.1.0",
-    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "3.1.0",
-    "@midnight-ntwrk/midnight-js-types": "3.1.0",
-    "@midnight-ntwrk/wallet-sdk-address-format": "3.0.0",
-    "@midnight-ntwrk/wallet-sdk-dust-wallet": "1.0.0",
-    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0",
-    "@midnight-ntwrk/wallet-sdk-hd": "3.0.0",
-    "@midnight-ntwrk/wallet-sdk-shielded": "1.0.0",
-    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "1.0.0",
-    "ws": "^8.19.0"
-  }
+    "@midnight-ntwrk/ledger-v8": "8.0.3",
+    "@midnight-ntwrk/midnight-js-contracts": "4.0.2",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.0.2",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.0.2",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "4.0.2",
+    "@midnight-ntwrk/midnight-js-network-id": "4.0.2",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.0.2",
+    "@midnight-ntwrk/midnight-js-types": "4.0.2",
+    "@midnight-ntwrk/midnight-js-utils": "4.0.2",
+    "@midnight-ntwrk/testkit-js": "4.0.2",
+    "@midnight-ntwrk/wallet-sdk-facade": "3.0.0",
+    "axios": "^1.13.6",
+    "pino": "^9.0.0",
+    "pino-pretty": "^13.0.0",
+    "rxjs": "^7.8.2",
+    "testcontainers": "^11.13.0",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/midnight-js-compact": "4.0.2",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.9",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "resolutions": {
+    "@midnight-ntwrk/ledger-v8": "8.0.3",
+    "@midnight-ntwrk/midnight-js-network-id": "4.0.2",
+    "@midnight-ntwrk/compact-runtime": "0.15.0"
+  },
+  "packageManager": "yarn@1.22.22"
 }
