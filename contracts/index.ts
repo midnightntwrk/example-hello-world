@@ -1,5 +1,4 @@
 import { CompiledContract } from '@midnight-ntwrk/compact-js';
-import { type WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import path from 'node:path';
 
 export {
@@ -11,24 +10,8 @@ export {
   type ImpureCircuits,
   type PureCircuits,
 } from './managed/hello-world/contract/index.js';
-
-import { Contract, type Ledger } from './managed/hello-world/contract/index.js';
-
-export type HelloWorldPrivateState = {
-};
-
-export const createHelloWorldPrivateState = (
-): HelloWorldPrivateState => ({});
-
-const witnesses = {
-  localSk: ({
-    privateState,
-  }: WitnessContext<Ledger, HelloWorldPrivateState>): [
-    HelloWorldPrivateState,
-  ] => {
-    return [privateState];
-  },
-};
+import { witnesses } from './witnesses.js';
+import { Contract } from './managed/hello-world/contract/index.js';
 
 const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 export const zkConfigPath = path.resolve(currentDir, 'managed', 'hello-world');

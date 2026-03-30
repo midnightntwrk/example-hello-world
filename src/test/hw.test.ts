@@ -13,10 +13,10 @@ import { MidnightWalletProvider, syncWallet } from '../wallet.js';
 import { buildProviders, type HelloWorldProviders } from '../providers.js';
 import {
   CompiledHelloWorldContract,
-  createHelloWorldPrivateState,
   ledger,
   zkConfigPath,
 } from '../../contracts/index.js';
+import { createHelloWorldPrivateState } from '../../contracts/witnesses.js';
 import type { EnvironmentConfiguration } from '@midnight-ntwrk/testkit-js';
 
 // Required for GraphQL subscriptions in Node.js
