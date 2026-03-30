@@ -1,5 +1,5 @@
 {
-  "name": "raffle-local",
+  "name": "hello-world-local",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,10 +7,8 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "compile": "compact compile +0.30.0 contract/raffle.compact contract/managed/raffle",
     "test": "NODE_OPTIONS='--experimental-vm-modules' vitest run",
     "test:local": "MIDNIGHT_NETWORK=local yarn test",
-    "test:mainnet": "MIDNIGHT_NETWORK=mainnet yarn test",
     "env:up": "docker compose up -d --wait",
     "env:down": "docker compose down",
     "validate": "yarn env:up && yarn test:local; yarn env:down"

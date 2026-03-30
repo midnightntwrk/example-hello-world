@@ -19,8 +19,8 @@ export function buildProviders(
 
     return {
         privateStateProvider: levelPrivateStateProvider({
-            privateStateStoreName: `raffle-${Date.now()}`,
-            privateStoragePasswordProvider: () => 'Raffle-Test-Password',
+            privateStateStoreName: `hello-world-${Date.now()}`,
+            privateStoragePasswordProvider: () => 'Hello-World-Test-Password',
             accountId: wallet.getCoinPublicKey(),
         }),
         publicDataProvider: indexerPublicDataProvider(
