@@ -7,7 +7,7 @@ services:
     environment:
       RUST_BACKTRACE: 'full'
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'ws://localhost:6300/version']
+      test: ['CMD', 'curl', '-f', 'http://localhost:6300/version']
       interval: 10s
       timeout: 5s
       retries: 20
@@ -40,7 +40,7 @@ services:
     ports:
       - '127.0.0.1:9944:9944'
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'ws://localhost:9944/health']
+      test: ['CMD', 'curl', '-f', 'http://localhost:9944/health']
       interval: 2s
       timeout: 5s
       retries: 20
