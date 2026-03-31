@@ -16,7 +16,6 @@ import {
   ledger,
   zkConfigPath,
 } from '../../contracts/index.js';
-import { createHelloWorldPrivateState } from '../../contracts/witnesses.js';
 import type { EnvironmentConfiguration } from '@midnight-ntwrk/testkit-js';
 
 // Required for GraphQL subscriptions in Node.js
@@ -43,7 +42,6 @@ const logger = pino({
 
 describe('Hello World Contract', () => {
   let aliceWallet: MidnightWalletProvider;
-  let bobWallet: MidnightWalletProvider;
   let aliceProviders: HelloWorldProviders;
   let contractAddress: ContractAddress;
 
@@ -75,7 +73,7 @@ describe('Hello World Contract', () => {
     await syncWallet(logger, aliceWallet.wallet, 600_000);
 
     aliceProviders = buildProviders(aliceWallet, zkConfigPath, config);
-    logger.info(`Providers initialized. Ready to test`);
+    logger.info(`Providers initialized. Ready to test!`);
   });
 
   afterAll(async () => {
@@ -87,12 +85,11 @@ describe('Hello World Contract', () => {
 
   it('Deploys the contract', async () => {
     logger.info(`Creating private state...`);
-    const initialPrivateState = createHelloWorldPrivateState();
 
     const deployed: any = await (deployContract as any)(aliceProviders, {
       compiledContract: CompiledHelloWorldContract,
       privateStateId: ALICE_PRIVATE_STATE_ID,
-      initialPrivateState,
+      initialPrivateState: {},
       args: [],
     });
 
@@ -105,7 +102,7 @@ describe('Hello World Contract', () => {
     const state = await queryLedger(aliceProviders);
     expect(state.message).toEqual("");
   });
-  it('Stores a message', async () => {
+  it('Stores Hello World!', async () => {
     const message = "Hello World!";
 
     await (submitCallTx as any)(aliceProviders, {

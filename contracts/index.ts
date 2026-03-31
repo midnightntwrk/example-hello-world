@@ -6,11 +6,9 @@ export {
   ledger,
   pureCircuits,
   type Ledger,
-  type Witnesses,
   type ImpureCircuits,
   type PureCircuits,
 } from './managed/hello-world/contract/index.js';
-import { witnesses } from './witnesses.js';
 import { Contract } from './managed/hello-world/contract/index.js';
 
 const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
@@ -20,6 +18,6 @@ export const CompiledHelloWorldContract = CompiledContract.make(
   'HelloWorldContract',
   Contract,
 ).pipe(
-  CompiledContract.withWitnesses(witnesses),
+  CompiledContract.withVacantWitnesses,
   CompiledContract.withCompiledFileAssets(zkConfigPath),
 );
