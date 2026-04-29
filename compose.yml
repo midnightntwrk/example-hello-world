@@ -1,13 +1,13 @@
 services:
   proof-server:
     image: 'midnightntwrk/proof-server:8.0.3'
-    command: ['midnight-proof-server -v']
+    command: ['midnight-proof-server', '-v']
     ports:
       - '127.0.0.1:6300:6300'
     environment:
       RUST_BACKTRACE: 'full'
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:6300/version']
+      test: ['CMD-SHELL', 'echo > /dev/tcp/127.0.0.1/6300']
       interval: 10s
       timeout: 5s
       retries: 20
