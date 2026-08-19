@@ -2571,13 +2571,6 @@ picomatch@^4.0.3, picomatch@^4.0.4:
   resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-4.0.5.tgz#51ea57a17d86f605f81039595fbc40ed06a55fab"
   integrity sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==
 
-pino-abstract-transport@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/pino-abstract-transport/-/pino-abstract-transport-2.0.0.tgz#de241578406ac7b8a33ce0d77ae6e8a0b3b68a60"
-  integrity sha512-F63x5tizV6WCh4R6RHyi2Ml+M70DNRXt/+HANowMflpgGFMAym/VKm6G7ZOQRjqN7XbGxK1Lg9t6ZrtzOaivMw==
-  dependencies:
-    split2 "^4.0.0"
-
 pino-abstract-transport@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/pino-abstract-transport/-/pino-abstract-transport-3.0.0.tgz#b21e5f33a297e8c4c915c62b3ce5dd4a87a52c23"
@@ -2609,7 +2602,7 @@ pino-std-serializers@^7.0.0:
   resolved "https://registry.yarnpkg.com/pino-std-serializers/-/pino-std-serializers-7.1.0.tgz#a7b0cd65225f29e92540e7853bd73b07479893fc"
   integrity sha512-BndPH67/JxGExRgiX1dX0w1FvZck5Wa4aal9198SrRhZjH3GxKQUKIBnYJTdj2HDN3UQAS06HlfcSbQj2OHmaw==
 
-pino@^10.3.1:
+pino@^10.0.0, pino@^10.3.1:
   version "10.3.1"
   resolved "https://registry.yarnpkg.com/pino/-/pino-10.3.1.tgz#6552c8f8d8481844c9e452e7bf0be90bff1939ce"
   integrity sha512-r34yH/GlQpKZbU1BvFFqOjhISRo1MNx1tWYsYvmj6KIRHSPMT2+yHOEb1SG6NMvRoHRF0a07kCOox/9yakl1vg==
@@ -2625,23 +2618,6 @@ pino@^10.3.1:
     safe-stable-stringify "^2.3.1"
     sonic-boom "^4.0.1"
     thread-stream "^4.0.0"
-
-pino@^9.0.0:
-  version "9.14.0"
-  resolved "https://registry.yarnpkg.com/pino/-/pino-9.14.0.tgz#673d9711c2d1e64d18670c1ec05ef7ba14562556"
-  integrity sha512-8OEwKp5juEvb/MjpIc4hjqfgCNysrS94RIOMXYvpYCdm/jglrKEiAYmiumbmGhCvs+IcInsphYDFwqrjr7398w==
-  dependencies:
-    "@pinojs/redact" "^0.4.0"
-    atomic-sleep "^1.0.0"
-    on-exit-leak-free "^2.1.0"
-    pino-abstract-transport "^2.0.0"
-    pino-std-serializers "^7.0.0"
-    process-warning "^5.0.0"
-    quick-format-unescaped "^4.0.3"
-    real-require "^0.2.0"
-    safe-stable-stringify "^2.3.1"
-    sonic-boom "^4.0.1"
-    thread-stream "^3.0.0"
 
 postcss@^8.5.16:
   version "8.5.25"
@@ -3115,13 +3091,6 @@ text-decoder@^1.1.0:
   integrity sha512-vlLytXkeP4xvEq2otHeJfSQIRyWxo/oZGEbXrtEEF9Hnmrdly59sUbzZ/QgyWuLYHctCHxFF4tRQZNQ9k60ExQ==
   dependencies:
     b4a "^1.6.4"
-
-thread-stream@^3.0.0:
-  version "3.2.0"
-  resolved "https://registry.yarnpkg.com/thread-stream/-/thread-stream-3.2.0.tgz#3720b496d646c8077b57406d53ec5a5385e3938c"
-  integrity sha512-zLBvqpwr4Esa0kRjcrzGU6zL25lePWaCLMx0RQFrmteozIfeNdaMLpG5U7PeHzvlFkAWaRKA9/KVW4F60iB+qw==
-  dependencies:
-    real-require "^0.2.0"
 
 thread-stream@^4.0.0:
   version "4.2.0"
