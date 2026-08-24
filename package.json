@@ -45,7 +45,9 @@
     "vitest": "^4.1.0"
   },
   "resolutions": {
-    "@midnight-ntwrk/wallet-sdk": "1.2.0"
+    "@midnight-ntwrk/wallet-sdk": "1.2.0",
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
   },
   "packageManager": "yarn@1.22.22"
 }
