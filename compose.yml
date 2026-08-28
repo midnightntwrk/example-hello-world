@@ -1,6 +1,6 @@
 services:
   proof-server:
-    image: 'midnightntwrk/proof-server:8.1.0'
+    image: 'midnightntwrk/proof-server:8.1.0@sha256:801bbc0340e9e96f16735f77b523f23c7459e3359842f7c79c2c53f4e994d531'
     command: ['midnight-proof-server', '-v']
     ports:
       - '127.0.0.1:6300:6300'
@@ -14,7 +14,7 @@ services:
       start_period: 10s
 
   indexer:
-    image: 'midnightntwrk/indexer-standalone:4.3.3'
+    image: 'midnightntwrk/indexer-standalone:4.3.3@sha256:03afd079b00bcd229df29a24771439c5e7695c339cd89216d0763ce40731cc4b'
     ports:
       - '127.0.0.1:8088:8088'
     environment:
@@ -38,7 +38,7 @@ services:
         condition: service_healthy
 
   node:
-    image: 'midnightntwrk/midnight-node:1.0.0'
+    image: 'midnightntwrk/midnight-node:1.0.0@sha256:ede01da35e982b6a4b85461ad8492ae2753ef14246fba33c8039b782aa8e39fb'
     ports:
       - '127.0.0.1:9944:9944'
     healthcheck:
