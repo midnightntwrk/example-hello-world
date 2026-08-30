@@ -1,0 +1,7 @@
+pragma language_version 0.23;
+
+export ledger journalCount: Uint<16>;
+
+export circuit recordJournal(): [] {
+  journalCount = 1;
+}

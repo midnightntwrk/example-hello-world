@@ -7,3 +7,5 @@ deployment.json
 /.midnight-expert
 .env.preview
 .env.preprod
+.env
+web/dist/

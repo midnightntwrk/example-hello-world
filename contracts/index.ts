@@ -8,14 +8,20 @@ export {
   type Ledger,
   type ImpureCircuits,
   type PureCircuits,
-} from './managed/hello-world/contract/index.js';
-import { Contract } from './managed/hello-world/contract/index.js';
+} from './managed/mindvault/contract/index.js';
+
+import { Contract } from './managed/mindvault/contract/index.js';
 
 const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
-export const zkConfigPath = path.resolve(currentDir, 'managed', 'hello-world');
 
-export const CompiledHelloWorldContract = CompiledContract.make(
-  'HelloWorldContract',
+export const zkConfigPath = path.resolve(
+  currentDir,
+  'managed',
+  'mindvault',
+);
+
+export const CompiledMindVaultContract = CompiledContract.make(
+  'MindVaultContract',
   Contract,
 ).pipe(
   CompiledContract.withVacantWitnesses,

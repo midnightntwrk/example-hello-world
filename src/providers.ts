@@ -6,33 +6,38 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 import { type MidnightWalletProvider } from './wallet.js';
 import { type NetworkConfig } from './config.js';
 
-export type HelloWorldCircuits = 'storeMessage';
+export type HelloWorldCircuits = 'recordJournal';
 
 export type HelloWorldProviders = MidnightProviders<any>;
 
 export function buildProviders(
-    wallet: MidnightWalletProvider,
-    zkConfigPath: string,
-    config: NetworkConfig,
+  wallet: MidnightWalletProvider,
+  zkConfigPath: string,
+  config: NetworkConfig,
 ): HelloWorldProviders {
-    const zkConfigProvider = new NodeZkConfigProvider<HelloWorldCircuits>(zkConfigPath);
+  const zkConfigProvider =
+    new NodeZkConfigProvider<HelloWorldCircuits>(zkConfigPath);
 
-    return {
-        privateStateProvider: levelPrivateStateProvider({
-            privateStateStoreName: `hello-world-${Date.now()}`,
-            privateStoragePasswordProvider: () => 'Hello-World-Test-Password',
-            accountId: wallet.getCoinPublicKey(),
-        }),
-        publicDataProvider: indexerPublicDataProvider(
-            config.indexer,
-            config.indexerWS,
-        ),
-        zkConfigProvider,
-        proofProvider: httpClientProofProvider(
-            config.proofServer,
-            zkConfigProvider,
-        ),
-        walletProvider: wallet,
-        midnightProvider: wallet,
-    };
+  return {
+    privateStateProvider: levelPrivateStateProvider({
+      privateStateStoreName: `mindvault-${Date.now()}`,
+      privateStoragePasswordProvider: () => 'MindVault-Test-Password',
+      accountId: wallet.getCoinPublicKey(),
+    }),
+
+    publicDataProvider: indexerPublicDataProvider(
+      config.indexer,
+      config.indexerWS,
+    ),
+
+    zkConfigProvider,
+
+    proofProvider: httpClientProofProvider(
+      config.proofServer,
+      zkConfigProvider,
+    ),
+
+    walletProvider: wallet,
+    midnightProvider: wallet,
+  };
 }

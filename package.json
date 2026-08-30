@@ -7,7 +7,9 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "compile": "compact compile contracts/hello-world.compact contracts/managed/hello-world",
+    "dev": "vite --config web/vite.config.ts",
+    "build": "vite build --config web/vite.config.ts",
+    "compile": "compact compile contracts/mindvault.compact contracts/managed/mindvault",
     "test": "NODE_OPTIONS='--experimental-vm-modules' vitest run",
     "test:local": "MIDNIGHT_NETWORK=local yarn test",
     "test:preview": "MIDNIGHT_NETWORK=preview yarn test",
@@ -20,20 +22,25 @@
     "validate": "yarn env:up && yarn test:local; yarn env:down"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-protocol": "4.1.1",
+    "@google/genai": "^2.19.0",
+    "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
     "@midnight-ntwrk/midnight-js-level-private-state-provider": "4.1.1",
-    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.1.1",
-    "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
     "@midnight-ntwrk/midnight-js-network-id": "4.1.1",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-protocol": "4.1.1",
     "@midnight-ntwrk/midnight-js-types": "4.1.1",
     "@midnight-ntwrk/midnight-js-utils": "4.1.1",
     "@midnight-ntwrk/testkit-js": "4.1.1",
-    "@midnight-ntwrk/wallet-sdk": "1.2.0",
     "axios": "^1.15.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
     "pino": "^9.0.0",
     "pino-pretty": "^13.0.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "rxjs": "^7.8.2",
     "testcontainers": "^11.13.0",
     "ws": "^8.14.2"
@@ -41,11 +48,14 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/ws": "^8.5.9",
+    "@vitejs/plugin-react": "^6.1.1",
+    "tsx": "^4.23.13",
     "typescript": "^5.7.0",
     "vitest": "^4.1.0"
   },
+  "packageManager": "yarn@1.22.22",
   "resolutions": {
-    "@midnight-ntwrk/wallet-sdk": "1.2.0"
-  },
-  "packageManager": "yarn@1.22.22"
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
+  }
 }
