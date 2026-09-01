@@ -20,7 +20,7 @@ import {
   WalletEntrySchema,
   WalletFacade,
 } from '@midnight-ntwrk/wallet-sdk';
-import { makeDefaultSubmissionService, type SubmissionService } from '@midnight-ntwrk/wallet-sdk/capabilities/submission';
+import { robustSubmissionService } from './submission.js';
 import { CustomShieldedWallet } from '@midnight-ntwrk/wallet-sdk/shielded';
 import { CustomDustWallet } from '@midnight-ntwrk/wallet-sdk/dust';
 import { createKeystore, PublicKey, UnshieldedWallet } from '@midnight-ntwrk/wallet-sdk/unshielded';
@@ -60,25 +60,6 @@ export interface AssembledWallet {
   seeded: string[];
   /** Reference height used, or null when none was applied. */
   referenceHeight: number | null;
-}
-
-/**
- * A submission service that defers building the real (node-connecting) one until
- * the first submit. Facade init then opens no node client, so an unresponsive
- * relay cannot stall startup — sync uses the indexer, never the node. A wallet
- * that actually submits pays the connection cost lazily.
- */
-function lazySubmissionService(relayURL: URL): SubmissionService<FinalizedTransaction> {
-  let inner: SubmissionService<FinalizedTransaction> | undefined;
-  const get = (): SubmissionService<FinalizedTransaction> =>
-    (inner ??= makeDefaultSubmissionService<FinalizedTransaction>({ relayURL }));
-  return {
-    submitTransaction: ((tx: FinalizedTransaction, waitForStatus?: 'Submitted' | 'InBlock' | 'Finalized') =>
-      get().submitTransaction(tx, waitForStatus)) as SubmissionService<FinalizedTransaction>['submitTransaction'],
-    close: async (): Promise<void> => {
-      if (inner) await inner.close();
-    },
-  };
 }
 
 /** Read the indexer's current tip height, or undefined if it cannot be reached. */
@@ -187,8 +168,9 @@ export async function assembleWallet(
 
   const facade = await WalletFacade.init({
     configuration: config,
-    // Lazy so facade init opens no node connection (see lazySubmissionService).
-    submissionService: () => lazySubmissionService(new URL(env.nodeWS)),
+    // Robust + lazy: no node connection at facade init (sync uses the indexer);
+    // a single persistent connection is opened on first submit. See submission.ts.
+    submissionService: () => robustSubmissionService(new URL(env.nodeWS), logger),
     shielded: () => shielded,
     unshielded: () => unshielded,
     dust: () => dust,
