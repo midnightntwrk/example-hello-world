@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { WebSocket } from 'ws';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -19,7 +20,13 @@ import {
   syncWallet,
   type WalletSecret,
 } from '../wallet.js';
+import { getChainTipHeight, type FastSyncOptions } from '../fast-sync/fast-wallet.js';
+import { getOrCreateTestWallet } from '../fast-sync/test-wallet.js';
 import { buildProviders, type HelloWorldProviders } from '../providers.js';
+
+// Shipped pre-seed reference bundles, and where generated wallets are cached.
+const REFERENCE_ROOT = fileURLToPath(new URL('../../preseed', import.meta.url));
+const WALLETS_DIR = fileURLToPath(new URL('../../.fast-sync-wallets', import.meta.url));
 import {
   CompiledHelloWorldContract,
   Contract,
@@ -51,9 +58,11 @@ const logger = pino({
 
 const network = process.env['MIDNIGHT_NETWORK'] ?? 'local';
 
-function resolveSecret(net: string): WalletSecret {
-  if (net === 'local') return { kind: 'seed', value: ALICE_LOCAL_SEED };
-
+// A wallet explicitly supplied via .env.<network> (MIDNIGHT_<NET>_SEED or
+// _MNEMONIC), or null when none is set. This is the fallback path: a wallet that
+// already has on-chain history cannot be fast-synced (the guard refuses it), so
+// it is only used when a developer deliberately provides one.
+function tryEnvSecret(net: string): WalletSecret | null {
   const upper = net.toUpperCase();
   const mnemonicEnv = `MIDNIGHT_${upper}_MNEMONIC`;
   const seedEnv = `MIDNIGHT_${upper}_SEED`;
@@ -61,25 +70,55 @@ function resolveSecret(net: string): WalletSecret {
   const seedHex = process.env[seedEnv]?.trim();
 
   if (mnemonic && seedHex) {
-    throw new Error(
-      `Set only one of ${mnemonicEnv} or ${seedEnv} (both are defined).`,
-    );
+    throw new Error(`Set only one of ${mnemonicEnv} or ${seedEnv} (both are defined).`);
   }
-  if (mnemonic) {
-    return { kind: 'mnemonic', value: mnemonic };
-  }
+  if (mnemonic) return { kind: 'mnemonic', value: mnemonic };
   if (seedHex) {
     if (!/^[0-9a-fA-F]+$/.test(seedHex) || seedHex.length % 2 !== 0) {
-      throw new Error(
-        `${seedEnv} must be a hex string of even length (no 0x prefix).`,
-      );
+      throw new Error(`${seedEnv} must be a hex string of even length (no 0x prefix).`);
     }
     return { kind: 'seed', value: seedHex };
   }
-  throw new Error(
-    `Either ${mnemonicEnv} or ${seedEnv} is required for network '${net}'. ` +
-      `Set one in .env.${net} or the shell.`,
+  return null;
+}
+
+interface WalletSetup {
+  secret: WalletSecret;
+  fastSync?: FastSyncOptions;
+  /** True when a fresh wallet was just generated and still needs funding. */
+  isNew: boolean;
+}
+
+// Resolve the wallet for a run. The DEFAULT — the standard developer entry point
+// — is a freshly generated wallet that fast-syncs from the shipped reference. A
+// wallet with history supplied via .env is the fallback, taking a normal full
+// sync (fast-sync cannot safely seed a wallet that predates the reference).
+async function resolveWallet(net: string, config: ReturnType<typeof getConfig>): Promise<WalletSetup> {
+  if (net === 'local') {
+    return { secret: { kind: 'seed', value: ALICE_LOCAL_SEED }, isNew: false };
+  }
+
+  const imported = tryEnvSecret(net);
+  if (imported) {
+    logger.info(`Using the wallet from .env.${net} — full sync (fast-sync applies only to freshly generated wallets).`);
+    return { secret: imported, isNew: false };
+  }
+
+  const tip = await getChainTipHeight(config.indexer);
+  if (tip === undefined) {
+    throw new Error(`Could not read the ${net} chain tip to set the new wallet's birthday.`);
+  }
+  const { wallet, isNew } = getOrCreateTestWallet(WALLETS_DIR, config.networkId, tip);
+  logger.info(
+    isNew
+      ? `Generated a new ${net} wallet (birthday ${wallet.birthday}); it will fast-sync, then you will be asked to fund it.`
+      : `Reusing the saved ${net} wallet (birthday ${wallet.birthday}).`,
   );
+  return {
+    secret: { kind: 'seed', value: wallet.seed },
+    fastSync: { referenceRoot: REFERENCE_ROOT, birthday: wallet.birthday },
+    isNew,
+  };
 }
 
 describe(`Hello World Contract (${network})`, () => {
@@ -88,7 +127,6 @@ describe(`Hello World Contract (${network})`, () => {
   let contractAddress: ContractAddress;
 
   const config = getConfig();
-  const secret = resolveSecret(network);
   const isRemote = network !== 'local';
   const syncTimeoutMs = Number(
     process.env['MIDNIGHT_SYNC_TIMEOUT_MS'] ??
@@ -115,12 +153,24 @@ describe(`Hello World Contract (${network})`, () => {
       proofServer: config.proofServer,
     };
 
-    wallet = await MidnightWalletProvider.build(logger, envConfig, secret);
+    const setup = await resolveWallet(network, config);
+    wallet = await MidnightWalletProvider.build(logger, envConfig, setup.secret, {
+      fastSync: setup.fastSync,
+    });
     await wallet.start();
     await syncWallet(logger, wallet.wallet, syncTimeoutMs);
 
     if (isRemote) {
-      // NIGHT→DUST registration. Seed is pre-funded via the faucet page; idempotent.
+      // A freshly generated wallet holds no NIGHT. Show its address and pause
+      // here (waitForFunds polls) until the developer funds it at the faucet;
+      // then it registers for DUST. An already-funded wallet returns at once.
+      const address = String(wallet.unshieldedKeystore.getBech32Address());
+      logger.info('────────────────────────────────────────────────────────────');
+      logger.info('Fund this wallet with NIGHT — the suite continues automatically once it arrives:');
+      logger.info(`  address: ${address}`);
+      logger.info(`  faucet:  ${config.faucet}`);
+      logger.info('Waiting for NIGHT...');
+      logger.info('────────────────────────────────────────────────────────────');
       const nightBalance = await waitForFunds(
         wallet.wallet,
         envConfig,

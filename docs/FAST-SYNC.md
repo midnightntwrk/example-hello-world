@@ -1,33 +1,47 @@
-# Fast sync (pre-seed) — proof of concept
+# Fast sync (pre-seed)
 
 A brand-new wallet on preprod takes **~78 minutes** to sync for the first time.
 Almost none of that is your transactions — it is DUST: the wallet has to build a
 chain-wide generation tree by streaming ~1.4M global ledger events before it can
 report a balance. Every new account pays it, on every device.
 
-This PoC adds **pre-seeding** to the wallet-sdk wallet in this repo. A throwaway
-empty wallet is synced to chain tip once, its state is serialized into a
-**reference bundle**, and every new wallet `restore()`s from that bundle (with its
-own keys swapped in) instead of walking the chain from genesis.
+This repo **pre-seeds** new wallets. A throwaway empty wallet is synced to chain
+tip once, its state is serialized into a **reference bundle** shipped under
+`preseed/`, and every fresh wallet `restore()`s from that bundle (with its own keys
+swapped in) instead of walking the chain from genesis.
 
 The technique, and the safety rules that make it safe, come from moth-wallet's
 field guide: `docs/patterns/preseed-sync-acceleration.md` in that repo. This is a
 faithful, self-contained port onto the SDK's `restore()` API — it does **not**
 depend on moth-wallet.
 
-## Try it
+## It runs under the standard test script
+
+There is no separate demo command — fast-sync is the default path in
+`MidnightWalletProvider.build`, so `yarn test:preprod` (or `test:preview`) uses it:
+
+1. The suite **generates a fresh wallet** (persisted, gitignored, under
+   `.fast-sync-wallets/<network>.json`) and records its birthday — the chain tip at
+   creation — so the safety guard can trust it.
+2. The wallet **fast-syncs** from the shipped reference.
+3. Because a fresh wallet holds no NIGHT, the suite **prints its address and the
+   faucet URL and pauses** — `waitForFunds` polls until you fund it — then registers
+   for DUST and runs the deploy/call tests.
 
 ```bash
-# A fresh random wallet, seeded from the shipped reference, timed to full sync.
-yarn fast-sync:demo:preview     # small reference, quick
-yarn fast-sync:demo:preprod     # the headline network
-
-# Also time an un-seeded wallet from genesis for comparison (slow!):
-FAST_SYNC_BASELINE=1 yarn fast-sync:demo:preprod
+yarn test:preview     # small reference, quick
+yarn test:preprod     # the headline network
 ```
 
-Requires network access to the selected network's indexer and node. No proof
-server is needed — sync does not prove anything.
+This is the standard developer entry point: you create a wallet, it syncs in
+seconds, you fund it once, and the wallet is cached for later runs. Requires network
+access to the indexer and node.
+
+**Fallback for a wallet with history.** If you set `MIDNIGHT_<NET>_SEED` or
+`MIDNIGHT_<NET>_MNEMONIC` in `.env.<network>`, the suite uses that wallet with a
+normal full sync instead. Fast-sync cannot safely seed a wallet that predates the
+reference (it would skip that wallet's own DUST registration and hide its funds), so
+the guard refuses it — this fallback exists precisely for that case.
 
 ### What a run proves
 
@@ -67,10 +81,10 @@ Set `LOG_LEVEL=debug` to see the per-phase `[timing]` breakdown.
 | `src/fast-sync/reference-bundle.ts` | Load + validate a shipped reference (fail-closed to a full sync). |
 | `src/fast-sync/preseed.ts` | Key-swap the reference into a new wallet's snapshots; the `height <= birthday` safety guard. |
 | `src/fast-sync/dedup.ts` | Client-side workaround for an SDK boundary-event off-by-one that a catch-up sync would otherwise trip. |
-| `src/fast-sync/fast-wallet.ts` | Assemble a `WalletFacade` from `restore()`d sub-wallets (mirrors testkit's `WalletFactory`). |
-| `src/wallet.ts` → `MidnightWalletProvider.fromParts` | Wrap the assembled facade past the private constructor. |
+| `src/fast-sync/fast-wallet.ts` | `assembleWallet` — build a `WalletFacade` from `restore()`d sub-wallets (mirrors testkit's `WalletFactory`); the engine behind `MidnightWalletProvider.build`. |
+| `src/fast-sync/test-wallet.ts` | Get-or-create the persisted fresh wallet and record its birthday. |
+| `src/wallet.ts` → `MidnightWalletProvider.build(…, { fastSync })` | The standard entry point; pass `fastSync` to pre-seed. |
 | `preseed/<network>/` | The shipped reference bundles (`manifest.json` + gzipped state per sub-wallet). |
-| `scripts/fast-sync-demo.ts` | The runnable demo. |
 
 The reference contains **no secret and no user-specific data** — it is public
 chain state plus a public key that gets replaced — which is what makes it safe to

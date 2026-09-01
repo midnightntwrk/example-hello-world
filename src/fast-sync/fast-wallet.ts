@@ -3,8 +3,8 @@
 // genesis. This mirrors testkit's WalletFactory, but takes the `restore()` path
 // for whichever sub-wallets a usable reference can seed.
 //
-// The heavy lifting (the reference, the key-swap, the safety guard) lives in the
-// sibling modules; this file only wires them to the SDK.
+// This is the engine behind MidnightWalletProvider.build. It returns the facade
+// and keys; the provider wrapping lives in wallet.ts.
 
 import {
   DustSecretKey,
@@ -16,6 +16,7 @@ import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   InMemoryTransactionHistoryStorage,
   mergeWalletEntries,
+  type UnshieldedKeystore,
   WalletEntrySchema,
   WalletFacade,
 } from '@midnight-ntwrk/wallet-sdk';
@@ -23,13 +24,9 @@ import { makeDefaultSubmissionService, type SubmissionService } from '@midnight-
 import { CustomShieldedWallet } from '@midnight-ntwrk/wallet-sdk/shielded';
 import { CustomDustWallet } from '@midnight-ntwrk/wallet-sdk/dust';
 import { createKeystore, PublicKey, UnshieldedWallet } from '@midnight-ntwrk/wallet-sdk/unshielded';
-import {
-  type DustWalletOptions,
-  type EnvironmentConfiguration,
-  WalletSeeds,
-} from '@midnight-ntwrk/testkit-js';
+import { type DustWalletOptions, type EnvironmentConfiguration, WalletSeeds } from '@midnight-ntwrk/testkit-js';
 import type { Logger } from 'pino';
-import { MidnightWalletProvider, type WalletSecret } from '../wallet.js';
+import type { WalletSecret } from '../wallet.js';
 import { dedupingDustBuilder, dedupingShieldedBuilder } from './dedup.js';
 import { isSeedable, preSeedNewWallet } from './preseed.js';
 import { loadReferenceBundle } from './reference-bundle.js';
@@ -40,31 +37,36 @@ const DUST_OPTIONS: DustWalletOptions = {
   feeBlocksMargin: 5,
 };
 
+/** Opt-in fast-sync configuration. Omit it entirely for a normal genesis sync. */
 export interface FastSyncOptions {
   /** Directory holding `<networkId>/{manifest.json,*.dat.gz}` reference bundles. */
   referenceRoot: string;
   /**
    * The wallet's birthday (chain height at creation) for the safety guard. Omit
-   * and it is read from the indexer's current tip — correct for a wallet created
-   * now. A restored/funded wallet must NOT pass a tip here; it has no safe
-   * shortcut and should sync from genesis.
+   * and it is read from the indexer's current tip — correct ONLY for a wallet
+   * created right now. A wallet with prior history must pass the height it was
+   * created at, or it must not enable fast-sync at all.
    */
   birthday?: number;
 }
 
-export interface FastSyncResult {
-  provider: MidnightWalletProvider;
+/** What `assembleWallet` hands back for the provider to wrap. */
+export interface AssembledWallet {
+  facade: WalletFacade;
+  zswapSecretKeys: ZswapSecretKeys;
+  dustSecretKey: DustSecretKey;
+  keystore: UnshieldedKeystore;
   /** Which sub-wallets were seeded from the reference (empty = full sync). */
   seeded: string[];
-  /** The reference height used, or null when none was applied. */
+  /** Reference height used, or null when none was applied. */
   referenceHeight: number | null;
 }
 
 /**
  * A submission service that defers building the real (node-connecting) one until
  * the first submit. Facade init then opens no node client, so an unresponsive
- * relay cannot stall startup with a 60s RPC-init timeout — sync uses the indexer,
- * never the node. A wallet that actually submits pays the connection cost lazily.
+ * relay cannot stall startup — sync uses the indexer, never the node. A wallet
+ * that actually submits pays the connection cost lazily.
  */
 function lazySubmissionService(relayURL: URL): SubmissionService<FinalizedTransaction> {
   let inner: SubmissionService<FinalizedTransaction> | undefined;
@@ -80,7 +82,7 @@ function lazySubmissionService(relayURL: URL): SubmissionService<FinalizedTransa
 }
 
 /** Read the indexer's current tip height, or undefined if it cannot be reached. */
-async function getChainTipHeight(indexerHttpUrl: string): Promise<number | undefined> {
+export async function getChainTipHeight(indexerHttpUrl: string): Promise<number | undefined> {
   try {
     const res = await fetch(indexerHttpUrl, {
       method: 'POST',
@@ -97,42 +99,25 @@ async function getChainTipHeight(indexerHttpUrl: string): Promise<number | undef
 }
 
 /**
- * Build a MidnightWalletProvider whose sub-wallets are restored from the shipped
- * reference where it is safe to do so. The returned provider is NOT started —
- * call `.start()` then `syncWallet()` exactly as with `MidnightWalletProvider.build`.
+ * Derive keys, optionally pre-seed from the shipped reference (when safe), and
+ * build an un-started WalletFacade. Pass no `fastSync` for a normal genesis sync.
  */
-export async function buildFastSyncedProvider(
+export async function assembleWallet(
   logger: Logger,
   env: EnvironmentConfiguration,
   secret: WalletSecret,
-  opts: FastSyncOptions,
-): Promise<FastSyncResult> {
+  fastSync?: FastSyncOptions,
+): Promise<AssembledWallet> {
   const networkId = env.walletNetworkId;
   setNetworkId(networkId);
 
-  // Phase timing, quiet unless LOG_LEVEL=debug. On preprod the dominant cost is
-  // `dust restore` (~72s) — deserializing the ~10.9 MB global generation tree into
-  // WASM — not any network call. Everything else is sub-second.
-  let _t = Date.now();
-  const mark = (label: string): void => {
-    const now = Date.now();
-    logger.debug(`  [timing] ${label}: ${((now - _t) / 1000).toFixed(1)}s`);
-    _t = now;
-  };
-
-  // Derive the wallet's keys directly. WalletSeeds runs the same HD derivation
-  // the FluentWalletBuilder uses, but as pure crypto — no throwaway facade, and no
-  // node client eagerly connecting to the relay (which, against an unresponsive
-  // RPC endpoint, spends 60s timing out in the background and spams errors). This
-  // is a cleanliness win, not the speed win: the dominant startup cost is the dust
-  // restore below, and this derivation is sub-second.
+  // Derive the wallet's keys directly — pure crypto, no throwaway facade and no
+  // node client. This is the same HD derivation the FluentWalletBuilder uses.
   const seeds = secret.kind === 'mnemonic' ? WalletSeeds.fromMnemonic(secret.value) : WalletSeeds.fromMasterSeed(secret.value);
   const keystore = createKeystore(seeds.unshielded, networkId);
-
   const zswapSecretKeys = ZswapSecretKeys.fromSeed(seeds.shielded);
   const dustSecretKey = DustSecretKey.fromSeed(seeds.dust);
   const unshieldedPublicKey = PublicKey.fromKeyStore(keystore);
-  mark('key derivation');
 
   // The same shared facade configuration testkit builds from an environment.
   const config = {
@@ -152,26 +137,25 @@ export async function buildFastSyncedProvider(
     },
   };
 
-  // --- Decide whether to seed, then how much ---
-  const reference = loadReferenceBundle(opts.referenceRoot, networkId);
-  mark('loadReferenceBundle (gunzip)');
-  const birthday = opts.birthday ?? (await getChainTipHeight(env.indexer));
-  mark('getChainTipHeight');
+  // --- Decide whether to seed, then how much (only when fast-sync is enabled) ---
   let seededSnaps: ReturnType<typeof preSeedNewWallet> = null;
   let referenceHeight: number | null = null;
 
-  if (reference && isSeedable(reference, birthday)) {
-    seededSnaps = preSeedNewWallet({ shieldedSecretKeys: zswapSecretKeys, unshieldedPublicKey, dustSecretKey }, networkId, reference);
-    mark('preSeedNewWallet (key-swap)');
-    if (seededSnaps) referenceHeight = reference.height;
-  } else if (reference) {
-    logger.info(
-      birthday === undefined
-        ? 'Fast-sync: no chain tip to compare against — syncing from genesis'
-        : `Fast-sync: reference (height ${reference.height}) is newer than birthday ${birthday} — syncing from genesis`,
-    );
-  } else {
-    logger.info(`Fast-sync: no reference bundle for '${networkId}' — syncing from genesis`);
+  if (fastSync) {
+    const reference = loadReferenceBundle(fastSync.referenceRoot, networkId);
+    const birthday = fastSync.birthday ?? (await getChainTipHeight(env.indexer));
+    if (reference && isSeedable(reference, birthday)) {
+      seededSnaps = preSeedNewWallet({ shieldedSecretKeys: zswapSecretKeys, unshieldedPublicKey, dustSecretKey }, networkId, reference);
+      if (seededSnaps) referenceHeight = reference.height;
+    } else if (reference) {
+      logger.info(
+        birthday === undefined
+          ? 'Fast-sync: no chain tip to compare against — syncing from genesis'
+          : `Fast-sync: reference (height ${reference.height}) is newer than birthday ${birthday} — syncing from genesis`,
+      );
+    } else {
+      logger.info(`Fast-sync: no reference bundle for '${networkId}' — syncing from genesis`);
+    }
   }
 
   // --- Build sub-wallets: restore where seeded, start-from-scratch otherwise ---
@@ -191,7 +175,6 @@ export async function buildFastSyncedProvider(
   const unshielded = seededSnaps?.unshielded
     ? UnshieldedWallet(unshieldedCfg).restore(seededSnaps.unshielded)
     : UnshieldedWallet(unshieldedCfg).startWithPublicKey(unshieldedPublicKey);
-  mark('shielded+unshielded restore');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dustBuilder = dedupingDustBuilder() as any;
@@ -201,7 +184,6 @@ export async function buildFastSyncedProvider(
         dustSecretKey,
         LedgerParameters.initialParameters().dust,
       );
-  mark('dust restore');
 
   const facade = await WalletFacade.init({
     configuration: config,
@@ -211,14 +193,14 @@ export async function buildFastSyncedProvider(
     unshielded: () => unshielded,
     dust: () => dust,
   });
-  mark('WalletFacade.init');
-
-  const provider = MidnightWalletProvider.fromParts(logger, facade, zswapSecretKeys, dustSecretKey, keystore);
 
   const seeded: string[] = [];
   if (seededSnaps?.shielded) seeded.push('shielded');
   if (seededSnaps?.unshielded) seeded.push('unshielded');
   if (seededSnaps?.dust) seeded.push('dust');
+  if (seeded.length > 0) {
+    logger.info(`Fast-sync: seeded [${seeded.join(', ')}] from reference at height ${referenceHeight} — sub-wallets start near tip.`);
+  }
 
-  return { provider, seeded, referenceHeight };
+  return { facade, zswapSecretKeys, dustSecretKey, keystore, seeded, referenceHeight };
 }

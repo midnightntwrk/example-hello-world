@@ -17,9 +17,6 @@
     "proof:up": "docker compose up -d --wait proof-server",
     "proof:down": "docker compose stop proof-server",
     "wait:dust": "vite-node scripts/wait-for-dust.ts",
-    "fast-sync:demo": "vite-node scripts/fast-sync-demo.ts",
-    "fast-sync:demo:preview": "MIDNIGHT_NETWORK=preview vite-node scripts/fast-sync-demo.ts",
-    "fast-sync:demo:preprod": "MIDNIGHT_NETWORK=preprod vite-node scripts/fast-sync-demo.ts",
     "validate": "yarn env:up && yarn test:local; yarn env:down"
   },
   "dependencies": {
