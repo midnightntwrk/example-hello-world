@@ -42,6 +42,24 @@ Wallet sync [1]: shielded=false (141061/…), unshielded=false (0/0), dust=false
 Dust began at event **141,062** instead of 0 — skipping ~79% of the event stream
 — then caught up to tip and reached fully-synced with no errors.
 
+### Measured: preprod, fresh wallet
+
+| phase | time |
+|---|---|
+| key derivation + gunzip + key-swap | ~0.7s |
+| **`dust.restore()`** — deserialize the ~10.9 MB generation tree into WASM | **~72s** |
+| sync catch-up (indexer, ~21.8k stale events) | ~53s |
+| **total** | **~126s** |
+| baseline, no reference | ~78 min |
+
+**~37× faster**, but note where the time goes on preprod: not the network — the
+long pole is `dust.restore()` deserializing the large global generation tree into
+WASM. That cost scales with chain length (the tree), not with staleness, and it is
+inherent to loading a reference of this size; it is not reducible from outside the
+SDK. It shrinks to seconds on smaller chains (preview's dust state is ~260 KB, so
+its restore is sub-second and a seeded preview wallet syncs in well under a minute).
+Set `LOG_LEVEL=debug` to see the per-phase `[timing]` breakdown.
+
 ## How it works
 
 | file | role |

@@ -6,7 +6,12 @@
 // The heavy lifting (the reference, the key-swap, the safety guard) lives in the
 // sibling modules; this file only wires them to the SDK.
 
-import { DustSecretKey, LedgerParameters, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import {
+  DustSecretKey,
+  type FinalizedTransaction,
+  LedgerParameters,
+  ZswapSecretKeys,
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   InMemoryTransactionHistoryStorage,
@@ -14,13 +19,14 @@ import {
   WalletEntrySchema,
   WalletFacade,
 } from '@midnight-ntwrk/wallet-sdk';
+import { makeDefaultSubmissionService, type SubmissionService } from '@midnight-ntwrk/wallet-sdk/capabilities/submission';
 import { CustomShieldedWallet } from '@midnight-ntwrk/wallet-sdk/shielded';
 import { CustomDustWallet } from '@midnight-ntwrk/wallet-sdk/dust';
-import { PublicKey, UnshieldedWallet } from '@midnight-ntwrk/wallet-sdk/unshielded';
+import { createKeystore, PublicKey, UnshieldedWallet } from '@midnight-ntwrk/wallet-sdk/unshielded';
 import {
   type DustWalletOptions,
   type EnvironmentConfiguration,
-  FluentWalletBuilder,
+  WalletSeeds,
 } from '@midnight-ntwrk/testkit-js';
 import type { Logger } from 'pino';
 import { MidnightWalletProvider, type WalletSecret } from '../wallet.js';
@@ -54,6 +60,25 @@ export interface FastSyncResult {
   referenceHeight: number | null;
 }
 
+/**
+ * A submission service that defers building the real (node-connecting) one until
+ * the first submit. Facade init then opens no node client, so an unresponsive
+ * relay cannot stall startup with a 60s RPC-init timeout — sync uses the indexer,
+ * never the node. A wallet that actually submits pays the connection cost lazily.
+ */
+function lazySubmissionService(relayURL: URL): SubmissionService<FinalizedTransaction> {
+  let inner: SubmissionService<FinalizedTransaction> | undefined;
+  const get = (): SubmissionService<FinalizedTransaction> =>
+    (inner ??= makeDefaultSubmissionService<FinalizedTransaction>({ relayURL }));
+  return {
+    submitTransaction: ((tx: FinalizedTransaction, waitForStatus?: 'Submitted' | 'InBlock' | 'Finalized') =>
+      get().submitTransaction(tx, waitForStatus)) as SubmissionService<FinalizedTransaction>['submitTransaction'],
+    close: async (): Promise<void> => {
+      if (inner) await inner.close();
+    },
+  };
+}
+
 /** Read the indexer's current tip height, or undefined if it cannot be reached. */
 async function getChainTipHeight(indexerHttpUrl: string): Promise<number | undefined> {
   try {
@@ -85,16 +110,29 @@ export async function buildFastSyncedProvider(
   const networkId = env.walletNetworkId;
   setNetworkId(networkId);
 
-  // Derive the wallet's keys and keystore through the normal builder, then
-  // discard its (never-started, so inert) facade. This reuses the SDK's key
-  // derivation rather than reimplementing HD-wallet derivation here.
-  const base = FluentWalletBuilder.forEnvironment(env).withDustOptions(DUST_OPTIONS);
-  const builder = secret.kind === 'mnemonic' ? base.withMnemonic(secret.value) : base.withSeed(secret.value);
-  const { seeds, keystore } = await builder.buildWithoutStarting();
+  // Phase timing, quiet unless LOG_LEVEL=debug. On preprod the dominant cost is
+  // `dust restore` (~72s) — deserializing the ~10.9 MB global generation tree into
+  // WASM — not any network call. Everything else is sub-second.
+  let _t = Date.now();
+  const mark = (label: string): void => {
+    const now = Date.now();
+    logger.debug(`  [timing] ${label}: ${((now - _t) / 1000).toFixed(1)}s`);
+    _t = now;
+  };
+
+  // Derive the wallet's keys directly. WalletSeeds runs the same HD derivation
+  // the FluentWalletBuilder uses, but as pure crypto — no throwaway facade, and no
+  // node client eagerly connecting to the relay (which, against an unresponsive
+  // RPC endpoint, spends 60s timing out in the background and spams errors). This
+  // is a cleanliness win, not the speed win: the dominant startup cost is the dust
+  // restore below, and this derivation is sub-second.
+  const seeds = secret.kind === 'mnemonic' ? WalletSeeds.fromMnemonic(secret.value) : WalletSeeds.fromMasterSeed(secret.value);
+  const keystore = createKeystore(seeds.unshielded, networkId);
 
   const zswapSecretKeys = ZswapSecretKeys.fromSeed(seeds.shielded);
   const dustSecretKey = DustSecretKey.fromSeed(seeds.dust);
   const unshieldedPublicKey = PublicKey.fromKeyStore(keystore);
+  mark('key derivation');
 
   // The same shared facade configuration testkit builds from an environment.
   const config = {
@@ -116,12 +154,15 @@ export async function buildFastSyncedProvider(
 
   // --- Decide whether to seed, then how much ---
   const reference = loadReferenceBundle(opts.referenceRoot, networkId);
+  mark('loadReferenceBundle (gunzip)');
   const birthday = opts.birthday ?? (await getChainTipHeight(env.indexer));
+  mark('getChainTipHeight');
   let seededSnaps: ReturnType<typeof preSeedNewWallet> = null;
   let referenceHeight: number | null = null;
 
   if (reference && isSeedable(reference, birthday)) {
     seededSnaps = preSeedNewWallet({ shieldedSecretKeys: zswapSecretKeys, unshieldedPublicKey, dustSecretKey }, networkId, reference);
+    mark('preSeedNewWallet (key-swap)');
     if (seededSnaps) referenceHeight = reference.height;
   } else if (reference) {
     logger.info(
@@ -150,6 +191,7 @@ export async function buildFastSyncedProvider(
   const unshielded = seededSnaps?.unshielded
     ? UnshieldedWallet(unshieldedCfg).restore(seededSnaps.unshielded)
     : UnshieldedWallet(unshieldedCfg).startWithPublicKey(unshieldedPublicKey);
+  mark('shielded+unshielded restore');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dustBuilder = dedupingDustBuilder() as any;
@@ -159,13 +201,17 @@ export async function buildFastSyncedProvider(
         dustSecretKey,
         LedgerParameters.initialParameters().dust,
       );
+  mark('dust restore');
 
   const facade = await WalletFacade.init({
     configuration: config,
+    // Lazy so facade init opens no node connection (see lazySubmissionService).
+    submissionService: () => lazySubmissionService(new URL(env.nodeWS)),
     shielded: () => shielded,
     unshielded: () => unshielded,
     dust: () => dust,
   });
+  mark('WalletFacade.init');
 
   const provider = MidnightWalletProvider.fromParts(logger, facade, zswapSecretKeys, dustSecretKey, keystore);
 
