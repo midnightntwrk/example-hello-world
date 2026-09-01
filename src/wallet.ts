@@ -117,6 +117,20 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
       keystore,
     );
   }
+
+  // Wrap an already-assembled facade and its keys. Used by the fast-sync path
+  // (src/fast-sync), which builds the facade from restored sub-wallets rather
+  // than through FluentWalletBuilder, and needs a way past the private
+  // constructor. The facade must be un-started; call `.start()` as usual.
+  static fromParts(
+    logger: Logger,
+    wallet: WalletFacade,
+    zswapSecretKeys: ZswapSecretKeys,
+    dustSecretKey: DustSecretKey,
+    keystore: UnshieldedKeystore,
+  ): MidnightWalletProvider {
+    return new MidnightWalletProvider(logger, wallet, zswapSecretKeys, dustSecretKey, keystore);
+  }
 }
 
 function isProgressStrictlyComplete(progress: unknown): boolean {
