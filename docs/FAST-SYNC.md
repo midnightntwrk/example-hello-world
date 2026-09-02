@@ -1,5 +1,13 @@
 # Fast sync (pre-seed)
 
+> ⚠️ **Development wallets only — not recommended for mainnet wallets with real
+> funds.** Fast-sync is designed for the freshly generated, throwaway testnet
+> wallets this suite creates. A wallet that already holds funds (any mainnet
+> wallet, or any wallet restored from a seed/mnemonic) must sync from genesis;
+> seeding it starts it past its own history and **silently hides funds**. The
+> `isSeedable()` guard refuses such wallets, but do not attempt to bypass it. See
+> [Safety](#safety--read-this-before-trusting-it) below.
+
 A brand-new wallet on preprod takes **~78 minutes** to sync for the first time.
 Almost none of that is your transactions — it is DUST: the wallet has to build a
 chain-wide generation tree by streaming ~1.4M global ledger events before it can

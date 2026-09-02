@@ -132,6 +132,8 @@ Hello World! You are now ready to explore [Tutorials](https://docs.midnight.netw
 
 A brand-new wallet on Preprod normally takes **~78 minutes** to sync for the first time — almost all of it spent building the chain-wide DUST generation tree. To avoid that, this repo uses **fast-sync**: it seeds each fresh wallet from a pre-computed reference bundle shipped under `preseed/`, so a new wallet is ready in seconds. Fast-sync is the default path for `yarn test:preview` and `yarn test:preprod`; see [`docs/FAST-SYNC.md`](docs/FAST-SYNC.md) for how it works and why it's safe.
 
+> ⚠️ **Fast-sync is for development wallets only.** It is intended for the throwaway testnet wallets this suite generates. Do **not** use it for a mainnet wallet or any wallet holding real funds — a wallet with history must sync from genesis, and seeding it can silently hide funds. See [`docs/FAST-SYNC.md`](docs/FAST-SYNC.md#safety--read-this-before-trusting-it) for the safety rules.
+
 To run the test script on Preview or Preprod:
 
 1. Start the proof server: `yarn proof:up`
