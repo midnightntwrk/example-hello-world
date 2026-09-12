@@ -7,3 +7,4 @@ deployment.json
 /.midnight-expert
 .env.preview
 .env.preprod
+.fast-sync-wallets/

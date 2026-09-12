@@ -130,8 +130,19 @@ Hello World! You are now ready to explore [Tutorials](https://docs.midnight.netw
 
 ## Deploy Contract to Live Testnet
 
-To run this test script on Preview or Preprod:
-1. Generate a wallet on the given network and fund it manually via the network's faucet page — [Preview](https://midnight-tmnight-preview.nethermind.dev/) or [Preprod](https://midnight-tmnight-preprod.nethermind.dev/). The faucet is a human-facing web page (no programmatic drip endpoint), so the test suite assumes the seed you supply is already funded with tNIGHT. tDUST can be delegated in 1AM or Lace Carbon (coming soon). See [Environments and endpoints](https://docs.midnight.network/relnotes/network) for reference.
-1. Create `.env.<network>` and populate it based on the information in `.env.<network>.example` in this repository.
+A brand-new wallet on Preprod normally takes **~78 minutes** to sync for the first time — almost all of it spent building the chain-wide DUST generation tree. To avoid that, this repo uses **fast-sync**: it seeds each fresh wallet from a pre-computed reference bundle shipped under `preseed/`, so a new wallet is ready in seconds. Fast-sync is the default path for `yarn test:preview` and `yarn test:preprod`; see [`docs/FAST-SYNC.md`](docs/FAST-SYNC.md) for how it works and why it's safe.
+
+> ⚠️ **Fast-sync is for development wallets only.** It is intended for the throwaway testnet wallets this suite generates. Do **not** use it for a mainnet wallet or any wallet holding real funds — a wallet with history must sync from genesis, and seeding it can silently hide funds. See [`docs/FAST-SYNC.md`](docs/FAST-SYNC.md#safety--read-this-before-trusting-it) for the safety rules.
+
+To run the test script on Preview or Preprod:
+
 1. Start the proof server: `yarn proof:up`
-1. Start the test: `yarn test:<network>` -- the wallet will sync to the network and advance the test suite programmatically.
+1. Start the test: `yarn test:preview` (small reference, quick) or `yarn test:preprod` (the headline network).
+
+The suite drives the rest of the flow for you:
+
+1. It **generates a fresh wallet** and fast-syncs it from the shipped reference. The wallet is cached under `.fast-sync-wallets/<network>.json` (gitignored) and reused on later runs.
+1. Because a fresh wallet holds no funds, the suite **prints the wallet's address and the faucet URL, then pauses**. Fund it once with tNIGHT at the faucet — [Preview](https://midnight-tmnight-preview.nethermind.dev/) or [Preprod](https://midnight-tmnight-preprod.nethermind.dev/). The faucet is a human-facing web page (no programmatic drip endpoint). See [Environments and endpoints](https://docs.midnight.network/relnotes/network) for reference.
+1. Once the tNIGHT arrives, the suite **resumes automatically**: it registers the NIGHT for DUST generation, waits for spendable tDUST to accrue, then runs the deploy and call tests. You do **not** need to delegate DUST manually.
+
+> **Bring your own wallet (fallback).** If you'd rather use an existing wallet that already has on-chain history, copy `.env.<network>.example` to `.env.<network>` and set either `MIDNIGHT_<NET>_SEED` or `MIDNIGHT_<NET>_MNEMONIC`. That wallet must already be funded with tNIGHT and hold tDUST (delegated in 1AM or Lace Carbon — coming soon). A wallet with history takes a normal full sync rather than fast-sync, since fast-sync can only safely seed a freshly generated wallet. The normal sync will take hours to complete.
