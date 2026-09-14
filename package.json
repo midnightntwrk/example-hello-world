@@ -41,7 +41,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/ws": "^8.5.9",
-    "typescript": "^5.7.0",
+    "typescript": "^7.0.0",
     "vitest": "^4.1.0"
   },
   "resolutions": {
