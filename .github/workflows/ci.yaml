@@ -36,7 +36,7 @@ jobs:
           cache: "yarn"
 
       - name: Update NPM
-        run: npm install -g npm@12.0.2
+        run: npm install -g npm@12.1.0
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
