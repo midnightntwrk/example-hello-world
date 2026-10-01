@@ -103,8 +103,9 @@ Leave the proof server running for the following steps.
 To deploy the contract, you'll need a wallet. The local devnet package comes with 3 pre-funded wallets.
 
 
-Run the deployment script:
+A fresh devnet needs a few seconds before the pre-funded wallet has DUST to pay fees. Wait for it, then run the deployment script:
 ```bash
+yarn wait:dust
 yarn test:local
 ```
 
