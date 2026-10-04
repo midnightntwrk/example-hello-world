@@ -17,7 +17,7 @@
     "proof:up": "docker compose up -d --wait proof-server",
     "proof:down": "docker compose stop proof-server",
     "wait:dust": "vite-node scripts/wait-for-dust.ts",
-    "validate": "yarn env:up && yarn test:local; yarn env:down"
+    "validate": "yarn env:up && yarn wait:dust && yarn test:local; status=$?; yarn env:down; exit $status"
   },
   "dependencies": {
     "@midnight-ntwrk/midnight-js-protocol": "4.1.1",
@@ -42,6 +42,7 @@
     "@types/node": "^22.0.0",
     "@types/ws": "^8.5.9",
     "typescript": "^5.7.0",
+    "vite-node": "^6.0.0",
     "vitest": "^4.1.0"
   },
   "resolutions": {
