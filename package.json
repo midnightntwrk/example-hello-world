@@ -39,8 +39,8 @@
     "ws": "^8.14.2"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/ws": "^8.5.9",
+    "@types/node": "^22.20.1",
+    "@types/ws": "^8.18.1",
     "typescript": "^5.7.0",
     "vite-node": "^6.0.0",
     "vitest": "^4.1.0"
