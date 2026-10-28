@@ -1,0 +1,30 @@
+{
+  "network": "preprod",
+  "height": 2203416,
+  "parts": {
+    "shielded": {
+      "bytes": 3674,
+      "gzipBytes": 1855
+    },
+    "unshielded": {
+      "bytes": 369,
+      "gzipBytes": 279
+    },
+    "dust": {
+      "bytes": 10949251,
+      "gzipBytes": 5139554
+    }
+  },
+  "witnesses": {
+    "shielded": {
+      "stream": "zswapLedgerEvents",
+      "id": 1449828,
+      "digest": "fc9acd5a4f6ca3a0"
+    },
+    "dust": {
+      "stream": "dustLedgerEvents",
+      "id": 1449958,
+      "digest": "ffdc476b89fca076"
+    }
+  }
+}
