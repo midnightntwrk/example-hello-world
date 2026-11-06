@@ -19,12 +19,11 @@
 // the first tx fails with Wallet.InsufficientFunds. This script improves the CI workflow.
 
 import pino from 'pino';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { EnvironmentConfiguration } from '@midnight-ntwrk/testkit-js';
 import { firstValueFrom, throwError } from 'rxjs';
 import { filter, take, tap, timeout } from 'rxjs/operators';
 import { getConfig } from '../src/config.js';
-import { MidnightWalletProvider, syncWallet } from '../src/wallet.js';
+import { buildWallet, syncWallet } from '../src/wallet.js';
 
 // Must match src/test/hw.test.ts.
 const ALICE_SEED = '0000000000000000000000000000000000000000000000000000000000000001';
@@ -47,16 +46,15 @@ function envInt(name: string, fallback: number): number {
 const minCoins = envInt('WAIT_FOR_DUST_MIN_COINS', 1);
 const timeoutMs = envInt('WAIT_FOR_DUST_TIMEOUT_MS', 180_000);
 const config = getConfig();
-setNetworkId(config.networkId);
 const envConfig: EnvironmentConfiguration = { walletNetworkId: config.networkId, ...config };
 
 logger.info(`Waiting for Alice to have ≥${minCoins} DUST coin(s) (timeout ${timeoutMs}ms)`);
 
-const wallet = await MidnightWalletProvider.build(logger, envConfig, {
+const wallet = await buildWallet(logger, envConfig, {
   kind: 'seed',
   value: ALICE_SEED,
 });
-await wallet.start();
+await wallet.start(false);
 try {
   await syncWallet(logger, wallet.wallet, timeoutMs);
   await firstValueFrom(
