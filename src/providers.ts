@@ -33,6 +33,7 @@ export function buildProviders(
             zkConfigProvider,
         ),
         walletProvider: wallet,
+        config: { networkId: config.networkId, ttlSeconds: 3600 },
         midnightProvider: wallet,
     };
 }

@@ -1,12 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { WebSocket } from 'ws';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   deployContract,
   submitCallTx,
-  type DeployedContract,
 } from '@midnight-ntwrk/midnight-js-contracts';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractState, type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type EnvironmentConfiguration,
   waitForFunds,
@@ -15,14 +13,14 @@ import pino from 'pino';
 
 import { getConfig } from '../config.js';
 import {
-  MidnightWalletProvider,
+  type MidnightWalletProvider,
   syncWallet,
   type WalletSecret,
+  buildWallet,
 } from '../wallet.js';
 import { buildProviders, type HelloWorldProviders } from '../providers.js';
 import {
   CompiledHelloWorldContract,
-  Contract,
   ledger,
   zkConfigPath,
 } from '../../contracts/index.js';
@@ -96,14 +94,12 @@ describe(`Hello World Contract (${network})`, () => {
   );
 
   async function queryLedger(p: HelloWorldProviders) {
-    const state = await p.publicDataProvider.queryContractState(contractAddress);
-    expect(state).not.toBeNull();
-    return ledger(state!.data);
+    const read = await p.publicDataProvider.queryContractState(contractAddress);
+    expect(read).not.toBeNull();
+    return ledger(read!.contractState.deserialize({ v9: ContractState }).data);
   }
 
   beforeAll(async () => {
-    setNetworkId(config.networkId);
-
     const envConfig: EnvironmentConfiguration = {
       walletNetworkId: config.networkId,
       networkId: config.networkId,
@@ -115,8 +111,9 @@ describe(`Hello World Contract (${network})`, () => {
       proofServer: config.proofServer,
     };
 
-    wallet = await MidnightWalletProvider.build(logger, envConfig, secret);
-    await wallet.start();
+    wallet = await buildWallet(logger, envConfig, secret);
+    // false: skip testkit's built-in funds wait (hard-coded 90 s sync timeout); syncWallet below waits as long as needed.
+    await wallet.start(false);
     await syncWallet(logger, wallet.wallet, syncTimeoutMs);
 
     if (isRemote) {
@@ -144,8 +141,7 @@ describe(`Hello World Contract (${network})`, () => {
   it('Deploys the contract', async () => {
     logger.info(`Creating private state...`);
 
-    const deployed: DeployedContract<Contract> =
-      await (deployContract<Contract>)(providers, {
+    const deployed = await deployContract(providers, {
         compiledContract: CompiledHelloWorldContract,
         privateStateId: PRIVATE_STATE_ID,
         initialPrivateState: {},
@@ -164,7 +160,7 @@ describe(`Hello World Contract (${network})`, () => {
   it('Stores Hello World!', async () => {
     const message = 'Hello World!';
 
-    await (submitCallTx<Contract, 'storeMessage'>)(providers, {
+    await submitCallTx(providers, {
       compiledContract: CompiledHelloWorldContract,
       contractAddress,
       privateStateId: PRIVATE_STATE_ID,

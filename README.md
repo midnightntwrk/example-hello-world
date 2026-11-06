@@ -32,7 +32,7 @@ code .
 ## Create the Compact Smart Contract
 
 ```compact
-pragma language_version 0.23;
+pragma language_version >= 0.23;
 
 export ledger message: Opaque<"string">;
 
@@ -47,8 +47,8 @@ export circuit storeMessage(newMessage: Opaque<"string">): [] {
 
 ## Compile the contract
 
-Compiling transforms your Compact code into zero-knowledge circuits, generates cryptographic keys, 
-and creates TypeScript APIs and a JavaScript implementation for the contract to be used by DApps. 
+Compiling transforms your Compact code into zero-knowledge circuits, generates cryptographic keys,
+and creates TypeScript APIs and a JavaScript implementation for the contract to be used by DApps.
 
 Run the compiler from the contracts folder:
 
