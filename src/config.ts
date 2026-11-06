@@ -5,6 +5,8 @@ export type NetworkConfig = {
   node: string;
   nodeWS: string;
   proofServer: string;
+  // Human-facing faucet page for topping up test wallets. Not a programmatic
+  // drip endpoint — the tests assume seeds in .env.<network> are pre-funded.
   faucet: string;
 };
 
@@ -25,7 +27,7 @@ export const PREVIEW_CONFIG: NetworkConfig = {
   node: 'https://rpc.preview.midnight.network',
   nodeWS: 'wss://rpc.preview.midnight.network',
   proofServer: process.env['MIDNIGHT_PROOF_SERVER'] ?? 'http://127.0.0.1:6300',
-  faucet: 'https://faucet.preview.midnight.network/api/drips',
+  faucet: 'https://midnight-tmnight-preview.nethermind.dev/',
 };
 
 export const PREPROD_CONFIG: NetworkConfig = {
@@ -35,7 +37,7 @@ export const PREPROD_CONFIG: NetworkConfig = {
   node: 'https://rpc.preprod.midnight.network',
   nodeWS: 'wss://rpc.preprod.midnight.network',
   proofServer: process.env['MIDNIGHT_PROOF_SERVER'] ?? 'http://127.0.0.1:6300',
-  faucet: 'https://faucet.preprod.midnight.network/api/drips',
+  faucet: 'https://midnight-tmnight-preprod.nethermind.dev/',
 };
 
 export function getConfig(): NetworkConfig {

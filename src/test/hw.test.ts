@@ -87,7 +87,7 @@ describe(`Hello World Contract (${network})`, () => {
 
   const config = getConfig();
   const secret = resolveSecret(network);
-  const isRemote = config.faucet !== '';
+  const isRemote = network !== 'local';
   const syncTimeoutMs = Number(
     process.env['MIDNIGHT_SYNC_TIMEOUT_MS'] ??
       (isRemote ? 60 * 60_000 : 10 * 60_000),
@@ -117,11 +117,11 @@ describe(`Hello World Contract (${network})`, () => {
     await syncWallet(logger, wallet.wallet, syncTimeoutMs);
 
     if (isRemote) {
-      // Faucet drip + NIGHT→DUST registration. Idempotent.
+      // NIGHT→DUST registration. Seed is pre-funded via the faucet page; idempotent.
       const nightBalance = await waitForFunds(
         wallet.wallet,
         envConfig,
-        true,
+        false,
         wallet.unshieldedKeystore,
       );
       logger.info(`Wallet NIGHT balance on '${network}': ${nightBalance}`);
