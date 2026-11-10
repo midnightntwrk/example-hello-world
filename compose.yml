@@ -1,6 +1,6 @@
 services:
   proof-server:
-    image: 'midnightntwrk/proof-server:9.0.0'
+    image: 'midnightntwrk/proof-server:9.0.1'
     command: ['midnight-proof-server', '-v']
     ports:
       - '127.0.0.1:6300:6300'
@@ -14,7 +14,7 @@ services:
       start_period: 10s
 
   indexer:
-    image: 'midnightntwrk/indexer-standalone:4.3.800'
+    image: 'midnightntwrk/indexer-standalone:4.4.101'
     ports:
       - '127.0.0.1:8088:8088'
     environment:
@@ -38,11 +38,16 @@ services:
         condition: service_healthy
 
   node:
-    image: 'midnightntwrk/midnight-node:2.1.0-rc.4'
+    image: 'midnightntwrk/midnight-node:2.1.101'
     ports:
       - '127.0.0.1:9944:9944'
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9944/health']
+      # Healthy only once block 1 exists: indexer 4.4.x's SPO indexer exits if it starts at genesis.
+      test:
+        [
+          'CMD-SHELL',
+          'h=$$(curl -sf -H "Content-Type: application/json" -d ''{"id":1,"jsonrpc":"2.0","method":"chain_getHeader","params":[]}'' http://localhost:9944) && ! echo "$$h" | grep -q ''"number":"0x0"''',
+        ]
       interval: 2s
       timeout: 5s
       retries: 20
