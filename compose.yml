@@ -42,7 +42,12 @@ services:
     ports:
       - '127.0.0.1:9944:9944'
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9944/health']
+      # Healthy only once block 1 exists: indexer 4.4.x's SPO indexer exits if it starts at genesis.
+      test:
+        [
+          'CMD-SHELL',
+          'h=$$(curl -sf -H "Content-Type: application/json" -d ''{"id":1,"jsonrpc":"2.0","method":"chain_getHeader","params":[]}'' http://localhost:9944) && ! echo "$$h" | grep -q ''"number":"0x0"''',
+        ]
       interval: 2s
       timeout: 5s
       retries: 20
