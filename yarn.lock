@@ -1667,16 +1667,6 @@ atomic-sleep@^1.0.0:
   resolved "https://registry.yarnpkg.com/atomic-sleep/-/atomic-sleep-1.0.0.tgz#eb85b77a601fc932cfe432c5acd364a9e2c9075b"
   integrity sha512-kNOjDqAh7px0XWNI+4QbzoiR/nTkHAWNud2uvnJquD1/x5a7EQZMJT0AczqK0Qn67oY/TTQ1LbUKajZpp3I9tQ==
 
-axios@^1.15.0:
-  version "1.17.0"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-1.17.0.tgz#ae5a1164a4f719942cd73c67e6a3f62d3ccb8f2b"
-  integrity sha512-J8SwNxprqqpbfenehxWYXE7CW+wM1BB4w3+N+g+/Wx40xM4rsLrfPmHHxSWIxJLYDgSY/HqlFPIYb2/S3rxafw==
-  dependencies:
-    follow-redirects "^1.16.0"
-    form-data "^4.0.6"
-    https-proxy-agent "^5.0.1"
-    proxy-from-env "^2.1.0"
-
 axios@^1.20.0:
   version "1.21.0"
   resolved "https://registry.yarnpkg.com/axios/-/axios-1.21.0.tgz#30c363a2652d9649e8b4d2645b34c64ca541ff67"
@@ -3270,27 +3260,6 @@ teex@^1.0.1:
   integrity sha512-eYE6iEI62Ni1H8oIa7KlDU6uQBtqr4Eajni3wX7rpfXD8ysFx8z0+dri+KWEPWpBsxXfxu58x/0jvTVT1ekOSg==
   dependencies:
     streamx "^2.12.5"
-
-testcontainers@^11.13.0:
-  version "11.14.0"
-  resolved "https://registry.yarnpkg.com/testcontainers/-/testcontainers-11.14.0.tgz#ee4262acede48788018adc38f902bda86bd21585"
-  integrity sha512-r9pniwv/iwzyHaI7gwAvAm4Y+IvjJg3vBWdjrUCaDMc2AXIr4jKbq7jJO18Mw2ybs73pZy1Aj7p/4RVBGMRWjg==
-  dependencies:
-    "@balena/dockerignore" "^1.0.2"
-    "@types/dockerode" "^4.0.1"
-    archiver "^7.0.1"
-    async-lock "^1.4.1"
-    byline "^5.0.0"
-    debug "^4.4.3"
-    docker-compose "^1.4.2"
-    dockerode "^4.0.10"
-    get-port "^7.2.0"
-    proper-lockfile "^4.1.2"
-    properties-reader "^3.0.1"
-    ssh-remote-port-forward "^1.0.4"
-    tar-fs "^3.1.2"
-    tmp "^0.2.5"
-    undici "^7.24.5"
 
 testcontainers@^12.2.0:
   version "12.2.1"
